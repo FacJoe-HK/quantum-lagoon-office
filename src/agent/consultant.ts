@@ -65,6 +65,34 @@ export class ConsultantAgent {
                         properties: {}
                     }
                 }
+            },
+            {
+                type: "function",
+                function: {
+                    name: "readExcel",
+                    description: "Reads an Excel (.xlsx) file from the workspace and returns its sheets as formatted JSON.",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            filename: { type: "string", description: "Name of the Excel file to read (e.g., 'data.xlsx')" }
+                        },
+                        required: ["filename"]
+                    }
+                }
+            },
+            {
+                type: "function",
+                function: {
+                    name: "runScript",
+                    description: "Executes a shell command strictly within the secure workspace folder. You can use this to run Python (.py) or Node (.js) scripts you have written to the workspace to process data or automate tasks.",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            command: { type: "string", description: "The shell command to execute (e.g., 'python process.py' or 'node script.js')" }
+                        },
+                        required: ["command"]
+                    }
+                }
             }
         ];
     }
@@ -102,6 +130,10 @@ export class ConsultantAgent {
                         } else if (funcName === 'listFiles') {
                             const files = await this.fileManager.listFiles();
                             toolResult = files.length > 0 ? `Files: ${files.join(', ')}` : 'Workspace is empty.';
+                        } else if (funcName === 'readExcel') {
+                            toolResult = await this.fileManager.readExcel(args.filename);
+                        } else if (funcName === 'runScript') {
+                            toolResult = await this.fileManager.runScript(args.command);
                         }
                     } catch (e: any) {
                         toolResult = `Error executing ${funcName}: ${e.message}`;

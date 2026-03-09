@@ -1,6 +1,11 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { exec } from 'child_process';
+import util from 'util';
+import * as xlsx from 'xlsx';
 import { config } from '../config';
+
+const execAsync = util.promisify(exec);
 
 /**
  * SecureFileManager
@@ -10,7 +15,7 @@ import { config } from '../config';
  */
 export class SecureFileManager {
     private workspacePath: string;
-    private allowedExtensions = ['.txt', '.md', '.csv', '.json'];
+    private allowedExtensions = ['.txt', '.md', '.csv', '.json', '.xlsx', '.js', '.py', '.sh'];
 
     constructor() {
         this.workspacePath = config.paths.workspace;
@@ -91,6 +96,43 @@ export class SecureFileManager {
                 .map(dirent => dirent.name);
         } catch {
             return [];
+        }
+    }
+
+    /**
+     * Reads an Excel file and converts it to a JSON formatted string.
+     */
+    async readExcel(filename: string): Promise<string> {
+        const safePath = this.resolveSecurePath(filename);
+        try {
+            const workbook = xlsx.readFile(safePath);
+            let out = '';
+            for (const sheetName of workbook.SheetNames) {
+                out += `--- Sheet: ${sheetName} ---\n`;
+                const worksheet = workbook.Sheets[sheetName];
+                const json = xlsx.utils.sheet_to_json(worksheet);
+                out += JSON.stringify(json, null, 2) + '\n\n';
+            }
+            return out;
+        } catch (e: any) {
+            throw new Error(`Failed to read Excel file: ${e.message}`);
+        }
+    }
+
+    /**
+     * Executes a shell command strictly within the workspace directory.
+     * Useful for running small Python or Node scripts the agent creates.
+     */
+    async runScript(command: string): Promise<string> {
+        try {
+            // Execute the command with the current working directory set to the sandbox
+            const { stdout, stderr } = await execAsync(command, { cwd: this.workspacePath, timeout: 30000 });
+            let output = '';
+            if (stdout) output += `STDOUT:\n${stdout}\n`;
+            if (stderr) output += `STDERR:\n${stderr}\n`;
+            return output || 'Command executed successfully without output.';
+        } catch (e: any) {
+            return `Failed to execute command: ${e.message}\n${e.stderr ? `STDERR:\n${e.stderr}` : ''}`;
         }
     }
 }
