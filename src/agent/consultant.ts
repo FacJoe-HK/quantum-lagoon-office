@@ -1,17 +1,20 @@
 import { AzureProvider } from '../llm/azure-provider';
 import { SecureFileManager } from '../security/file-sandbox';
+import { WebScraper } from './web-scraper';
 import { config } from '../config';
 import fs from 'fs/promises';
 
 export class ConsultantAgent {
     private llm: AzureProvider;
     private fileManager: SecureFileManager;
+    private webScraper: WebScraper;
     private soulPrompt: string = '';
     private contextHistory: any[] = [];
 
     constructor() {
         this.llm = new AzureProvider();
         this.fileManager = new SecureFileManager();
+        this.webScraper = new WebScraper();
     }
 
     async initialize() {
@@ -93,6 +96,63 @@ export class ConsultantAgent {
                         required: ["command"]
                     }
                 }
+            },
+            {
+                type: "function",
+                function: {
+                    name: "readPdf",
+                    description: "Reads a PDF (.pdf) file from the workspace and extracts its text.",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            filename: { type: "string", description: "Name of the PDF file to read (e.g., 'iso27001.pdf')" }
+                        },
+                        required: ["filename"]
+                    }
+                }
+            },
+            {
+                type: "function",
+                function: {
+                    name: "searchWeb",
+                    description: "Searches the live internet (DuckDuckGo) for up-to-date compliance or general information.",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            query: { type: "string", description: "The search query." }
+                        },
+                        required: ["query"]
+                    }
+                }
+            },
+            {
+                type: "function",
+                function: {
+                    name: "readUrl",
+                    description: "Fetches and reads the main text content from a specific web URL.",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            url: { type: "string", description: "The full HTTPS URL to read." }
+                        },
+                        required: ["url"]
+                    }
+                }
+            },
+            {
+                type: "function",
+                function: {
+                    name: "saveStructuredJson",
+                    description: "Explicitly generates and saves a strictly formatted JSON file to the workspace. Use this over writeFile when outputting JSON arrays or objects.",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            filename: { type: "string", description: "Name of the JSON file to save (e.g., 'results.json')" },
+                            data: { type: "object", description: "The JSON structure to save. This guarantees valid, parsable JSON output.", additionalProperties: true }
+                        },
+                        required: ["filename", "data"]
+                    }
+                }
             }
         ];
     }
@@ -134,6 +194,15 @@ export class ConsultantAgent {
                             toolResult = await this.fileManager.readExcel(args.filename);
                         } else if (funcName === 'runScript') {
                             toolResult = await this.fileManager.runScript(args.command);
+                        } else if (funcName === 'readPdf') {
+                            toolResult = await this.fileManager.readPdf(args.filename);
+                        } else if (funcName === 'searchWeb') {
+                            toolResult = await this.webScraper.searchWeb(args.query);
+                        } else if (funcName === 'readUrl') {
+                            toolResult = await this.webScraper.readUrl(args.url);
+                        } else if (funcName === 'saveStructuredJson') {
+                            await this.fileManager.writeFile(args.filename, JSON.stringify(args.data, null, 2));
+                            toolResult = `Successfully wrote strict JSON to ${args.filename}`;
                         }
                     } catch (e: any) {
                         toolResult = `Error executing ${funcName}: ${e.message}`;

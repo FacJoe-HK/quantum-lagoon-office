@@ -3,6 +3,7 @@ import path from 'path';
 import { exec } from 'child_process';
 import util from 'util';
 import * as xlsx from 'xlsx';
+const pdfParse = require('pdf-parse');
 import { config } from '../config';
 
 const execAsync = util.promisify(exec);
@@ -15,7 +16,7 @@ const execAsync = util.promisify(exec);
  */
 export class SecureFileManager {
     private workspacePath: string;
-    private allowedExtensions = ['.txt', '.md', '.csv', '.json', '.xlsx', '.js', '.py', '.sh'];
+    private allowedExtensions = ['.txt', '.md', '.csv', '.json', '.xlsx', '.js', '.py', '.sh', '.pdf'];
 
     constructor() {
         this.workspacePath = config.paths.workspace;
@@ -116,6 +117,20 @@ export class SecureFileManager {
             return out;
         } catch (e: any) {
             throw new Error(`Failed to read Excel file: ${e.message}`);
+        }
+    }
+
+    /**
+     * Reads a PDF file and extracts its text securely.
+     */
+    async readPdf(filename: string): Promise<string> {
+        const safePath = this.resolveSecurePath(filename);
+        try {
+            const dataBuffer = await fs.readFile(safePath);
+            const data = await pdfParse(dataBuffer);
+            return `--- PDF Document: ${filename} (${data.numpages} pages) ---\n\n${data.text}`;
+        } catch (e: any) {
+            throw new Error(`Failed to read PDF file: ${e.message}`);
         }
     }
 
