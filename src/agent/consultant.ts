@@ -110,8 +110,9 @@ export class ConsultantAgent {
                     // Append tool execution to history so LLM knows what happened
                     this.contextHistory.push(responseMessage as any); // Add assistant's tool intent
                     this.contextHistory.push({
-                        role: 'user', // We simulate user role for tool execution returning
-                        content: `Tool '${funcName}' executed. Result:\n${toolResult}`
+                        role: 'tool',
+                        content: toolResult,
+                        tool_call_id: toolCall.id
                     });
                 } else {
                     // LLM provided a direct response
