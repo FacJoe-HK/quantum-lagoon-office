@@ -175,46 +175,49 @@ export class ConsultantAgent {
                 );
 
                 if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
-                    // LLM wants to use a tool
-                    const toolCall = responseMessage.tool_calls[0];
-                    const funcName = toolCall.function.name;
-                    const args = JSON.parse(toolCall.function.arguments);
-                    let toolResult = '';
+                    // Append assistant's tool intent FIRST before any tool responses
+                    this.contextHistory.push(responseMessage as any);
 
-                    try {
-                        if (funcName === 'readFile') {
-                            toolResult = await this.fileManager.readFile(args.filename);
-                        } else if (funcName === 'writeFile') {
-                            await this.fileManager.writeFile(args.filename, args.content);
-                            toolResult = `Successfully wrote to ${args.filename}`;
-                        } else if (funcName === 'listFiles') {
-                            const files = await this.fileManager.listFiles();
-                            toolResult = files.length > 0 ? `Files: ${files.join(', ')}` : 'Workspace is empty.';
-                        } else if (funcName === 'readExcel') {
-                            toolResult = await this.fileManager.readExcel(args.filename);
-                        } else if (funcName === 'runScript') {
-                            toolResult = await this.fileManager.runScript(args.command);
-                        } else if (funcName === 'readPdf') {
-                            toolResult = await this.fileManager.readPdf(args.filename);
-                        } else if (funcName === 'searchWeb') {
-                            toolResult = await this.webScraper.searchWeb(args.query);
-                        } else if (funcName === 'readUrl') {
-                            toolResult = await this.webScraper.readUrl(args.url);
-                        } else if (funcName === 'saveStructuredJson') {
-                            await this.fileManager.writeFile(args.filename, JSON.stringify(args.data, null, 2));
-                            toolResult = `Successfully wrote strict JSON to ${args.filename}`;
+                    // Loop through ALL requested tool calls
+                    for (const toolCall of responseMessage.tool_calls) {
+                        const funcName = toolCall.function.name;
+                        const args = JSON.parse(toolCall.function.arguments);
+                        let toolResult = '';
+
+                        try {
+                            if (funcName === 'readFile') {
+                                toolResult = await this.fileManager.readFile(args.filename);
+                            } else if (funcName === 'writeFile') {
+                                await this.fileManager.writeFile(args.filename, args.content);
+                                toolResult = `Successfully wrote to ${args.filename}`;
+                            } else if (funcName === 'listFiles') {
+                                const files = await this.fileManager.listFiles();
+                                toolResult = files.length > 0 ? `Files: ${files.join(', ')}` : 'Workspace is empty.';
+                            } else if (funcName === 'readExcel') {
+                                toolResult = await this.fileManager.readExcel(args.filename);
+                            } else if (funcName === 'runScript') {
+                                toolResult = await this.fileManager.runScript(args.command);
+                            } else if (funcName === 'readPdf') {
+                                toolResult = await this.fileManager.readPdf(args.filename);
+                            } else if (funcName === 'searchWeb') {
+                                toolResult = await this.webScraper.searchWeb(args.query);
+                            } else if (funcName === 'readUrl') {
+                                toolResult = await this.webScraper.readUrl(args.url);
+                            } else if (funcName === 'saveStructuredJson') {
+                                await this.fileManager.writeFile(args.filename, JSON.stringify(args.data, null, 2));
+                                toolResult = `Successfully wrote strict JSON to ${args.filename}`;
+                            }
+                        } catch (e: any) {
+                            toolResult = `Error executing ${funcName}: ${e.message}`;
                         }
-                    } catch (e: any) {
-                        toolResult = `Error executing ${funcName}: ${e.message}`;
-                    }
 
-                    // Append tool execution to history so LLM knows what happened
-                    this.contextHistory.push(responseMessage as any); // Add assistant's tool intent
-                    this.contextHistory.push({
-                        role: 'tool',
-                        content: toolResult,
-                        tool_call_id: toolCall.id
-                    });
+                        // Append individual tool execution result
+                        this.contextHistory.push({
+                            role: 'tool',
+                            content: toolResult,
+                            tool_call_id: toolCall.id
+                        });
+                    }
                 } else {
                     // LLM provided a direct response
                     finalResponse = responseMessage.content || '';
