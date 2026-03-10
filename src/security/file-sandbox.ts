@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { exec } from 'child_process';
 import util from 'util';
-import * as xlsx from 'xlsx';
+import ExcelJS from 'exceljs';
 const pdfParse = require('pdf-parse');
 import { config } from '../config';
 
@@ -101,19 +101,39 @@ export class SecureFileManager {
     }
 
     /**
-     * Reads an Excel file and converts it to a JSON formatted string.
+     * Reads an Excel file and converts it to a JSON formatted string using exceljs.
      */
     async readExcel(filename: string): Promise<string> {
         const safePath = this.resolveSecurePath(filename);
         try {
-            const workbook = xlsx.readFile(safePath);
+            const workbook = new ExcelJS.Workbook();
+            await workbook.xlsx.readFile(safePath);
             let out = '';
-            for (const sheetName of workbook.SheetNames) {
-                out += `--- Sheet: ${sheetName} ---\n`;
-                const worksheet = workbook.Sheets[sheetName];
-                const json = xlsx.utils.sheet_to_json(worksheet);
-                out += JSON.stringify(json, null, 2) + '\n\n';
-            }
+
+            workbook.eachSheet((worksheet, sheetId) => {
+                out += `--- Sheet: ${worksheet.name} ---\n`;
+                const sheetData: any[] = [];
+
+                // Get header row (first row)
+                const headers: string[] = [];
+                const firstRow = worksheet.getRow(1);
+                firstRow.eachCell((cell, colNumber) => {
+                    headers[colNumber] = cell.value ? cell.value.toString() : `Column${colNumber}`;
+                });
+
+                // Iterate data rows
+                worksheet.eachRow((row, rowNumber) => {
+                    if (rowNumber === 1) return; // Skip headers
+                    const rowData: any = {};
+                    row.eachCell((cell, colNumber) => {
+                        const header = headers[colNumber] || `Column${colNumber}`;
+                        rowData[header] = cell.value;
+                    });
+                    sheetData.push(rowData);
+                });
+
+                out += JSON.stringify(sheetData, null, 2) + '\n\n';
+            });
             return out;
         } catch (e: any) {
             throw new Error(`Failed to read Excel file: ${e.message}`);
