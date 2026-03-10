@@ -1,6 +1,7 @@
 import { AzureProvider } from '../llm/azure-provider';
 import { SecureFileManager } from '../security/file-sandbox';
 import { WebScraper } from './web-scraper';
+import { MemoryStore } from '../memory/memory-store';
 import { config } from '../config';
 import fs from 'fs/promises';
 
@@ -8,6 +9,7 @@ export class ConsultantAgent {
     private llm: AzureProvider;
     private fileManager: SecureFileManager;
     private webScraper: WebScraper;
+    private memoryStore: MemoryStore;
     private soulPrompt: string = '';
     private contextHistory: any[] = [];
 
@@ -15,10 +17,16 @@ export class ConsultantAgent {
         this.llm = new AzureProvider();
         this.fileManager = new SecureFileManager();
         this.webScraper = new WebScraper();
+        this.memoryStore = new MemoryStore();
     }
 
     async initialize() {
         await this.fileManager.ensureWorkspace();
+        await this.memoryStore.initialize();
+
+        // Load persistent memory context
+        this.contextHistory = this.memoryStore.getRecentHistory(30);
+
         try {
             this.soulPrompt = await fs.readFile(config.paths.soul, 'utf-8');
         } catch (e) {
@@ -161,7 +169,9 @@ export class ConsultantAgent {
      * Processes a user request, executing file operations if the LLM requests it.
      */
     async processMessage(message: string): Promise<string> {
-        this.contextHistory.push({ role: 'user', content: message });
+        const userMessage = { role: 'user', content: message };
+        this.contextHistory.push(userMessage);
+        await this.memoryStore.addMessage(userMessage);
 
         try {
             let runAgent = true;
@@ -177,6 +187,7 @@ export class ConsultantAgent {
                 if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
                     // Append assistant's tool intent FIRST before any tool responses
                     this.contextHistory.push(responseMessage as any);
+                    await this.memoryStore.addMessage(responseMessage);
 
                     // Loop through ALL requested tool calls
                     for (const toolCall of responseMessage.tool_calls) {
@@ -212,16 +223,20 @@ export class ConsultantAgent {
                         }
 
                         // Append individual tool execution result
-                        this.contextHistory.push({
+                        const toolMsg = {
                             role: 'tool',
                             content: toolResult,
                             tool_call_id: toolCall.id
-                        });
+                        };
+                        this.contextHistory.push(toolMsg);
+                        await this.memoryStore.addMessage(toolMsg);
                     }
                 } else {
                     // LLM provided a direct response
                     finalResponse = responseMessage.content || '';
-                    this.contextHistory.push({ role: 'assistant', content: finalResponse });
+                    const assistantMsg = { role: 'assistant', content: finalResponse };
+                    this.contextHistory.push(assistantMsg);
+                    await this.memoryStore.addMessage(assistantMsg);
                     runAgent = false; // Turn complete
                 }
             }
