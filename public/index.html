@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Lagoon | Office Edition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <!-- Highlight.js for code blocks in Markdown -->
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+    <!-- Marked.js for parsing markdown -> HTML -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- DOMPurify to sanitize markdown output -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.3/purify.min.js"></script>
+</head>
+
+<body>
+
+    <div class="app-container">
+
+        <!-- Sidebar Workspace Viewer -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>📁 Workspace</h2>
+                <button id="refreshWorkspaceBtn" title="Refresh Files">↻</button>
+            </div>
+            <div class="workspace-wrapper">
+                <ul id="fileList" class="file-list">
+                    <!-- Files populated by JS -->
+                </ul>
+            </div>
+            <div class="sidebar-footer">
+                <p>Quantum Lagoon OS</p>
+                <span class="status-indicator"></span>
+            </div>
+        </aside>
+
+        <!-- Main Chat Area -->
+        <main class="chat-container">
+            <header class="chat-header">
+                <div class="logo">
+                    <div class="orb"></div>
+                    <h1>Consultant Agent <span>v2.0</span></h1>
+                </div>
+            </header>
+
+            <div class="chat-history" id="chatHistory">
+                <div class="message assistant greeting">
+                    <div class="avatar">👔</div>
+                    <div class="message-content">
+                        <strong>Consultant Agent</strong>
+                        <p>Welcome to the Quantum Lagoon Premium Office Suite. The secure sandbox is initialized and I
+                            stand ready to assist you with compliance audits, gap analysis, and document generation. How
+                            may I be of service today?</p>
+                    </div>
+                </div>
+                <!-- Chat messages appended here by JS -->
+            </div>
+
+            <div class="chat-input-wrapper">
+                <textarea id="chatInput" placeholder="Assign a task to your consultant... (Shift+Enter for new line)"
+                    rows="1"></textarea>
+                <button id="sendBtn">
+                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"
+                        stroke-linecap="round" stroke-linejoin="round" class="css-i6dzq1">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="loading-indicator" id="loadingIndicator">
+                <div class="spinner"></div>
+                <span id="loadingText">Agent is analyzing...</span>
+            </div>
+
+        </main>
+
+        <!-- File Preview Modal -->
+        <div id="fileModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="modalFilename">filename.txt</h3>
+                    <span class="close-btn" id="closeModal">&times;</span>
+                </div>
+                <pre id="modalFileContent" class="modal-body"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>

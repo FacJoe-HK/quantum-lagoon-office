@@ -35,6 +35,20 @@ export class ConsultantAgent {
         }
     }
 
+    /**
+     * Expose sandbox files to the web frontend viewer.
+     */
+    async getWorkspaceFiles(): Promise<string[]> {
+        return await this.fileManager.listFiles();
+    }
+
+    /**
+     * Expose file content to the web frontend viewer.
+     */
+    async readFileContent(filename: string): Promise<string> {
+        return await this.fileManager.readFile(filename);
+    }
+
     private defineTools() {
         return [
             {
